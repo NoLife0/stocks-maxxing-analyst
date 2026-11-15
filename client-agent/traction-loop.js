@@ -29,6 +29,27 @@ const TICKERS = argVal('--tickers', 'NVDA,TSLA,AAPL,MSFT,META').split(',').map((
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Retry helper for IDEMPOTENT steps only (Phase 3 resilience): the unpaid
+// 402 probe, the sweep trigger and treasury reads. The PAID request is
+// never retried blindly — a fresh attempt would sign a new authorization
+// and could pay twice; if it fails, the loop stops and a human checks the
+// chain (the chain, not this log, is the record).
+async function withRetry(fn, label, tries = 3) {
+  let lastErr;
+  for (let attempt = 1; attempt <= tries; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      if (attempt < tries) {
+        console.error(`[retry] ${label} attempt ${attempt}/${tries} failed: ${e.message.slice(0, 100)}`);
+        await sleep(1200 * attempt);
+      }
+    }
+  }
+  throw lastErr;
+}
+
 function log(entry) {
   fs.appendFileSync(LOG_PATH, JSON.stringify(entry) + '\n');
   console.log(JSON.stringify(entry));
@@ -42,7 +63,7 @@ function loadWallet() {
 
 async function buyReport(wallet, ticker) {
   const url = `${SERVER}/research/${ticker}`;
-  const first = await fetch(url);
+  const first = await withRetry(() => fetch(url), `${ticker} 402 probe`);
   if (first.status !== 402) throw new Error(`${ticker}: expected HTTP 402, got ${first.status}`);
   const accept = (await first.json()).accepts[0];
 
@@ -90,10 +111,15 @@ async function buyReport(wallet, ticker) {
 }
 
 async function sweep() {
-  const res = await fetch(`${SERVER}/treasury/sweep`, { method: 'POST' });
-  const body = await res.json();
-  if (res.status !== 200) throw new Error(`sweep failed HTTP ${res.status}: ${JSON.stringify(body).slice(0, 200)}`);
-  return body;
+  // A sweep is safe to retry: the server sweeps whatever sits above the
+  // reserve at call time, and a second call with nothing above the reserve
+  // is a no-op response, not a second sweep.
+  return withRetry(async () => {
+    const res = await fetch(`${SERVER}/treasury/sweep`, { method: 'POST' });
+    const body = await res.json();
+    if (res.status !== 200) throw new Error(`sweep failed HTTP ${res.status}: ${JSON.stringify(body).slice(0, 200)}`);
+    return body;
+  }, 'sweep');
 }
 
 async function main() {
@@ -114,7 +140,7 @@ async function main() {
     if (i < COUNT - 1 && DELAY_MS > 0) await sleep(DELAY_MS);
   }
 
-  const t = await (await fetch(`${SERVER}/treasury`)).json();
+  const t = await withRetry(async () => (await fetch(`${SERVER}/treasury`)).json(), 'treasury read');
   log({ type: 'run-end', at: new Date().toISOString(), purchases: bought, treasury: t });
   console.log(`done: ${bought} purchases. treasury: ${JSON.stringify(t)}`);
 }

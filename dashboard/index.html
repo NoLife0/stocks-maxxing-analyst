@@ -33,7 +33,21 @@
   .tag.sweep { background: #2b2140; color: #b79cff; }
   .muted { color: #9aa4b2; }
   footer { max-width: 1080px; margin: 0 auto; padding: 0 24px 32px; color: #77808e; font-size: 12.5px; line-height: 1.6; }
+  footer p { margin: 0 0 8px; }
   #err { color: #ff8a8a; }
+  .stale { color: #e0b45c; font-size: 12.5px; margin-top: 6px; }
+  /* Mobile: tighten padding, let tables scroll sideways instead of
+     crushing columns, keep numbers readable. */
+  @media (max-width: 640px) {
+    header { padding: 20px 14px 4px; }
+    main { padding: 12px 14px 28px; }
+    footer { padding: 0 14px 24px; }
+    h1 { font-size: 21px; }
+    .card .value { font-size: 22px; }
+    .tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 12px; }
+    table { min-width: 560px; }
+    th, td { padding: 8px 10px; font-size: 12.5px; }
+  }
 </style>
 </head>
 <body>
@@ -41,17 +55,21 @@
   <h1>Analyst-for-Hire <span class="accent">— Treasury Dashboard</span></h1>
   <div class="sub">
     An autonomous research agent sells tokenized-stock research reports over
-    <b>x402</b> (0.25 tUSDC per report, EIP-3009, gasless for the buyer) and sweeps the
-    profit into a basket of tokenized stocks under an owner-signed policy.
-    Everything below is read live from <b>Base Sepolia</b> chain state plus Base mainnet
-    NAV reference data — no server-side bookkeeping.
+    <b>x402</b> (0.25 tUSDC per report, EIP-3009, gasless for the buyer) and sweeps its
+    net revenue into a basket of tokenized stocks under an owner-signed policy.
+    The reports are onchain data summaries — not investment advice — and the agent
+    does not execute trades for users. Everything below is read live from
+    <b>Base Sepolia</b> chain state plus Base mainnet NAV reference data — no
+    server-side bookkeeping.
   </div>
   <div class="sub" id="meta">Loading chain state…</div>
+  <div class="stale" id="stale" hidden></div>
 </header>
 <main>
   <div class="cards" id="cards"></div>
 
   <h2>Treasury positions (Base Sepolia B20 testnet tokens)</h2>
+  <div class="tablewrap">
   <table id="positions">
     <thead><tr>
       <th>Asset</th><th>Contract</th><th class="num">Balance (UI shares)</th>
@@ -59,60 +77,82 @@
     </tr></thead>
     <tbody></tbody>
   </table>
+  </div>
 
   <h2>Activity — report sales &amp; treasury sweeps</h2>
+  <div class="tablewrap">
   <table id="activity">
     <thead><tr>
       <th>Type</th><th>Time (UTC)</th><th>Detail</th><th class="num">Amount (tUSDC)</th><th>Transaction</th>
     </tr></thead>
     <tbody></tbody>
   </table>
+  </div>
   <div id="err"></div>
 </main>
 <footer>
-  Demo on Base Sepolia testnet. tUSDC and the *xT stock tokens are testnet instruments with no
-  monetary value; mainnet NAV figures are reference values from the Coinbase Tokenized Stocks API,
-  not execution prices. Research reports are onchain data summaries — not investment advice.
-  <span id="gen"></span>
+  <p><b>Disclaimer.</b> This is a demo running on the Base Sepolia testnet. tUSDC and the *xT
+  stock tokens are testnet instruments with no monetary value. The research reports sold by the
+  agent are onchain data summaries generated from public reference data; they are
+  <b>not investment advice</b>, not a recommendation, and not an offer to buy or sell any
+  security. Mainnet NAV figures are reference values from the Coinbase Tokenized Stocks API,
+  not live bid/ask or execution prices, and no returns are promised or implied.</p>
+  <p>The agent sells research and manages only its own demo treasury under an owner-signed
+  policy; it does not hold user funds and does not execute trades for users. The tokenized
+  stocks referenced are non-U.S. (Reg S) instruments. This project is an independent build for
+  the Base Stocks Maxxing quest; it is not affiliated with or endorsed by Base, Coinbase, or
+  any issuer of the referenced shares, and it claims no rights (such as voting rights) that
+  the underlying assets do not grant. <span id="gen"></span></p>
 </footer>
 <script>
 const short = (a) => a ? a.slice(0, 6) + '…' + a.slice(-4) : '';
 const txLink = (ex, tx) => `<a class="mono" href="${ex}/tx/${tx}" target="_blank" rel="noopener">${short(tx)}</a>`;
 const addrLink = (ex, a) => `<a class="mono" href="${ex}/address/${a}" target="_blank" rel="noopener">${short(a)}</a>`;
+// Consistent number formatting everywhere (Phase 3 polish): tUSDC and USD
+// reference values at 2dp, UI share balances up to 6dp, NAV at 2dp with the
+// full figure in the tooltip.
+const fmt2 = (v) => v === null || v === undefined ? '—' : Number(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtShares = (v) => v === null || v === undefined ? '—' : Number(v).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 6 });
+const fmtMult = (v) => v === null || v === undefined ? '—' : Number(v).toFixed(6).replace(/0+$/, '').replace(/\.$/, '.0');
 
 async function main() {
   try {
     const s = await (await fetch('/api/state')).json();
     if (s.error) throw new Error(s.error);
     const ex = s.explorer;
+    if (s.stale) {
+      const el = document.getElementById('stale');
+      el.hidden = false;
+      el.textContent = `Live chain reads are temporarily failing — showing the last good state from ${s.stale_since || s.generated_at}.`;
+    }
     document.getElementById('meta').innerHTML =
       `Policy ${addrLink(ex, s.contracts.policy)} · tUSDC ${addrLink(ex, s.contracts.usdc)} · Router ${addrLink(ex, s.contracts.router)} · Agent ${addrLink(ex, s.contracts.agent)}`;
     document.getElementById('cards').innerHTML = `
-      <div class="card"><div class="label">Reports sold</div><div class="value">${s.revenue.reports_sold}</div><div class="note">at ${s.revenue.price_per_report_tusdc} tUSDC each, via x402</div></div>
-      <div class="card"><div class="label">Total revenue</div><div class="value">${s.revenue.total_tusdc} tUSDC</div><div class="note">settled onchain into the TreasuryPolicy</div></div>
-      <div class="card"><div class="label">Swept into stocks</div><div class="value">${s.treasury.total_swept_tusdc} tUSDC</div><div class="note">${s.treasury.sweep_count} sweeps · policy keeps a 0.05 tUSDC reserve</div></div>
-      <div class="card"><div class="label">Treasury stock value (ref)</div><div class="value">$${s.treasury.positions_reference_value_usd}</div><div class="note">UI shares × mainnet NAV reference</div></div>`;
+      <div class="card"><div class="label">Reports sold</div><div class="value">${s.revenue.reports_sold}</div><div class="note">at ${fmt2(s.revenue.price_per_report_tusdc)} tUSDC each, via x402</div></div>
+      <div class="card"><div class="label">Total revenue</div><div class="value">${fmt2(s.revenue.total_tusdc)} tUSDC</div><div class="note">settled onchain into the TreasuryPolicy</div></div>
+      <div class="card"><div class="label">Swept into stocks</div><div class="value">${fmt2(s.treasury.total_swept_tusdc)} tUSDC</div><div class="note">${s.treasury.sweep_count} sweeps · policy keeps a 0.05 tUSDC reserve</div></div>
+      <div class="card"><div class="label">Treasury stock value (ref)</div><div class="value">$${fmt2(s.treasury.positions_reference_value_usd)}</div><div class="note">UI shares × mainnet NAV reference — not an execution price</div></div>`;
     document.querySelector('#positions tbody').innerHTML = s.treasury.positions.map(p => `
       <tr>
         <td><b>${p.symbol}</b></td>
         <td>${addrLink(ex, p.address)}</td>
-        <td class="num">${p.ui_shares}</td>
-        <td class="num">${p.ui_multiplier}</td>
-        <td class="num">${p.nav_usd !== null ? '$' + p.nav_usd : '—'}</td>
-        <td class="num">${p.reference_value_usd !== null ? '$' + p.reference_value_usd : '—'}</td>
+        <td class="num">${fmtShares(p.ui_shares)}</td>
+        <td class="num">${fmtMult(p.ui_multiplier)}</td>
+        <td class="num" title="${p.nav_usd !== null ? p.nav_usd : ''}">${p.nav_usd !== null ? '$' + fmt2(p.nav_usd) : '—'}</td>
+        <td class="num">${p.reference_value_usd !== null ? '$' + fmt2(p.reference_value_usd) : '—'}</td>
       </tr>`).join('');
     document.querySelector('#activity tbody').innerHTML = s.activity.map(a => {
       if (a.kind === 'sale') return `
         <tr><td><span class="tag sale">SALE</span></td><td class="muted">${a.time.replace('T', ' ').replace('Z', '')}</td>
         <td>Report payment from ${addrLink(ex, a.payer)}</td>
-        <td class="num">${a.amount_tusdc}</td><td>${txLink(ex, a.tx)}</td></tr>`;
-      const buys = a.buys.map(b => `${b.asset}: ${b.usdc_in} → ${b.stock_out_ui}`).join(' · ');
+        <td class="num">${fmt2(a.amount_tusdc)}</td><td>${txLink(ex, a.tx)}</td></tr>`;
+      const buys = a.buys.map(b => `${b.asset}: ${fmt2(b.usdc_in)} → ${fmtShares(b.stock_out_ui)}`).join(' · ');
       return `
         <tr><td><span class="tag sweep">SWEEP #${a.sweep_id}</span></td><td class="muted">${a.time.replace('T', ' ').replace('Z', '')}</td>
         <td>${buys || '—'}</td>
-        <td class="num">${a.total_tusdc}</td><td>${txLink(ex, a.tx)}</td></tr>`;
+        <td class="num">${fmt2(a.total_tusdc)}</td><td>${txLink(ex, a.tx)}</td></tr>`;
     }).join('');
-    document.getElementById('gen').textContent = `Generated ${s.generated_at}.`;
+    document.getElementById('gen').textContent = `State generated ${s.generated_at} from Base Sepolia.`;
   } catch (e) {
     document.getElementById('err').textContent = 'Failed to load chain state: ' + e.message;
   }

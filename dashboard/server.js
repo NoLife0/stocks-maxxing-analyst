@@ -17,8 +17,10 @@ const fs = require('fs');
 const path = require('path');
 const { ethers } = require('ethers');
 // The public sepolia.base.org endpoint rate-limits (25 req/s) under bursty
-// log scans; default this read-only dashboard to the publicnode endpoint
-// instead (override with DASHBOARD_RPC). Must be set before lib.js loads.
+// log scans; default this read-only dashboard's PRIMARY endpoint to
+// publicnode instead (override with DASHBOARD_RPC). lib.js turns the list
+// into a FallbackProvider, so sepolia.base.org and drpc remain automatic
+// fallbacks behind it. Must be set before lib.js loads.
 process.env.BASE_SEPOLIA_RPC =
   process.env.DASHBOARD_RPC || process.env.BASE_SEPOLIA_RPC || 'https://base-sepolia-rpc.publicnode.com';
 const { provider, loadDeployments } = require('../contracts/scripts/lib');
@@ -62,11 +64,26 @@ async function getDeployBlock() {
 }
 
 async function getLogsChunked(contract, filter, from, to) {
+  // Per-chunk retry with backoff (Phase 3): a single rate-limited chunk
+  // must not discard the whole state build. The provider underneath is
+  // already a multi-endpoint FallbackProvider (contracts/scripts/lib.js)
+  // with this dashboard's RPC promoted to primary.
   const out = [];
   const CH = 10000;
   for (let f = from; f <= to; f += CH) {
     const t = Math.min(to, f + CH - 1);
-    out.push(...(await contract.queryFilter(filter, f, t)));
+    let lastErr;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        out.push(...(await contract.queryFilter(filter, f, t)));
+        lastErr = null;
+        break;
+      } catch (e) {
+        lastErr = e;
+        if (attempt < 3) await new Promise((r) => setTimeout(r, 1500 * attempt));
+      }
+    }
+    if (lastErr) throw lastErr;
   }
   return out;
 }
@@ -208,7 +225,7 @@ let cache = { at: 0, state: null };
 async function getState() {
   if (cache.state && Date.now() - cache.at < 15_000) return cache.state;
   let lastErr;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 4; attempt++) {
     try {
       const state = await buildState();
       cache = { at: Date.now(), state };
@@ -218,6 +235,9 @@ async function getState() {
       await new Promise((r) => setTimeout(r, 3000 * (attempt + 1)));
     }
   }
+  // Last resort: serve the last good state rather than an error page —
+  // the dashboard is a read-only view and slightly stale beats broken.
+  if (cache.state) return { ...cache.state, stale: true, stale_since: new Date(cache.at).toISOString() };
   throw lastErr;
 }
 

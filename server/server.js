@@ -15,12 +15,13 @@
 //      Base mainnet data) plus an X-PAYMENT-RESPONSE receipt header.
 //
 // Revenue lands in the TreasuryPolicy contract; POST /treasury/sweep runs the
-// policy engine: profit above the operating reserve is swept into the stock
-// basket through the policy contract (allowlist + per-sweep cap enforced
-// onchain).
+// policy engine: net revenue above the operating reserve is swept into the
+// stock basket through the policy contract (allowlist + per-sweep cap
+// enforced onchain). "Net revenue" is the agent's own report income above
+// its reserve — no returns to any third party are promised or implied.
 const http = require('http');
 const { ethers } = require('ethers');
-const { provider, agentWallet, loadDeployments } = require('../contracts/scripts/lib');
+const { provider, agentWallet, loadDeployments, withRetry } = require('../contracts/scripts/lib');
 const { buildReport, TICKERS, SEPOLIA_KEY } = require('./research');
 
 const PORT = process.env.PORT || 4021;
@@ -127,8 +128,11 @@ async function verifyAndSettle(payment) {
   if (auth.value < PRICE) throw new Error('insufficient payment amount');
   const now = BigInt(Math.floor(Date.now() / 1000));
   if (now <= auth.validAfter || now >= auth.validBefore) throw new Error('authorization outside validity window');
-  if (await usdc.authorizationState(auth.from, auth.nonce)) throw new Error('authorization already used');
-  if ((await usdc.balanceOf(auth.from)) < auth.value) throw new Error('payer balance too low');
+  // Read-path resilience: these two view calls sit between a valid payment
+  // and its settlement; a rate-limited RPC must not fail the purchase, so
+  // they retry with backoff across the fallback providers (lib.js).
+  if (await withRetry(() => usdc.authorizationState(auth.from, auth.nonce), { label: 'authorizationState' })) throw new Error('authorization already used');
+  if ((await withRetry(() => usdc.balanceOf(auth.from), { label: 'payer balanceOf' })) < auth.value) throw new Error('payer balance too low');
 
   const sig = ethers.Signature.from(signature);
   const tx = await usdc.transferWithAuthorization(
@@ -139,7 +143,14 @@ async function verifyAndSettle(payment) {
   return { txHash: tx.hash, payer: auth.from, amount: auth.value.toString() };
 }
 
+// Treasury reads are retried with backoff: in Phase 2 a rate-limited RPC
+// made a landed sweep look like an HTTP 500. The chain is the record; a
+// read failure must surface as a retry, not as a phantom failure.
 async function treasuryState() {
+  return withRetry(treasuryStateOnce, { label: 'treasuryState' });
+}
+
+async function treasuryStateOnce() {
   const usdcBal = await usdc.balanceOf(dep.policy.address);
   const positions = {};
   for (const { key } of BASKET) {
@@ -170,6 +181,10 @@ async function treasuryState() {
 // live from Base Sepolia — included in each report so buyers see the
 // revenue-to-stock loop in the product they just paid for.
 async function treasuryPositionFor(ticker) {
+  return withRetry(() => treasuryPositionForOnce(ticker), { label: `treasuryPositionFor ${ticker}` });
+}
+
+async function treasuryPositionForOnce(ticker) {
   const key = SEPOLIA_KEY[ticker];
   if (!key || !dep.stocks[key]) return null;
   const stock = new ethers.Contract(dep.stocks[key].address, STOCK_ABI, prov);
@@ -191,7 +206,7 @@ async function treasuryPositionFor(ticker) {
 }
 
 async function runSweep() {
-  const balance = await usdc.balanceOf(dep.policy.address);
+  const balance = await withRetry(() => usdc.balanceOf(dep.policy.address), { label: 'sweep balanceOf' });
   const sweepable = balance > RESERVE ? balance - RESERVE : 0n;
   if (sweepable <= 0n) return { swept: '0', reason: 'balance at or below operating reserve', balance: balance.toString() };
   const assets = [];

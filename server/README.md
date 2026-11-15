@@ -8,9 +8,9 @@ The Analyst-for-Hire x402 research server. Run with `npm run server`
 | Route | Description |
 |---|---|
 | `GET /health` | Liveness + payment parameters (payTo, asset, price). |
-| `GET /research/:ticker` | The paid product (`NVDA`, `TSLA`). Without payment: **HTTP 402** with an x402 `accepts[]` (scheme `exact`, network `base-sepolia`, 0.25 tUSDC, `payTo` = TreasuryPolicy). With a valid `X-PAYMENT` header: settles and returns the report + `X-PAYMENT-RESPONSE` receipt. |
+| `GET /research/:ticker` | The paid product (`NVDA`, `TSLA`, `AAPL`, `MSFT`, `META` — a ticker is served only if the Tokenized Stocks API returns real data for it). Without payment: **HTTP 402** with an x402 `accepts[]` (scheme `exact`, network `base-sepolia`, 0.25 tUSDC, `payTo` = TreasuryPolicy). With a valid `X-PAYMENT` header: settles and returns the report + `X-PAYMENT-RESPONSE` receipt. |
 | `GET /treasury` | Policy state: tUSDC balance, total swept, stock positions (raw + `balanceOfUI`). |
-| `POST /treasury/sweep` | Runs the policy engine: revenue above the 0.05 tUSDC operating reserve is swept into the basket (60% NVDAxT / 40% TSLAxT) via `TreasuryPolicy.sweep`. |
+| `POST /treasury/sweep` | Runs the policy engine: net revenue above the 0.05 tUSDC operating reserve is swept into the five-asset basket (NVDA 30% / TSLA 20% / AAPL 20% / MSFT 15% / META 15%) via `TreasuryPolicy.sweep`. |
 
 ## Payment verification
 

@@ -2,7 +2,7 @@
   "name": "stocks-maxxing-analyst",
   "version": "0.1.0",
   "private": true,
-  "description": "Analyst-for-Hire — x402-paid research agent that sweeps profit into tokenized stocks (Base Stocks Maxxing, Agentic Stock Finance track).",
+  "description": "Analyst-for-Hire — x402-paid research agent that sweeps its net revenue into tokenized stocks (Base Stocks Maxxing, Agentic Stock Finance track). Reports are onchain data summaries, not investment advice.",
   "type": "commonjs",
   "scripts": {
     "compile": "node contracts/scripts/compile.js",

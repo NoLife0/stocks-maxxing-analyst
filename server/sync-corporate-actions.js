@@ -19,18 +19,30 @@
 // Progress is persisted after every chunk batch, so the script is resumable
 // and partial coverage is recorded honestly (scan.complete flag).
 //
-// Usage: node server/sync-corporate-actions.js [--only NVDAc,TSLAc] [--chunk 10000]
+// Usage: node server/sync-corporate-actions.js [--only NVDAc,TSLAc] [--chunk 10000] [--out path]
+// --out lets parallel per-token runs write separate state files (merged
+// afterwards); default is server/corporate-actions.json.
 const fs = require('fs');
 const path = require('path');
 
 const API = 'https://api.coinbase.com/v1/tokenized-stocks?page_size=500';
-const OUT = path.join(__dirname, 'corporate-actions.json');
+const args = process.argv.slice(2);
+const OUT = args.includes('--out') ? args[args.indexOf('--out') + 1] : path.join(__dirname, 'corporate-actions.json');
 const ANNOUNCEMENT_TOPIC = '0xccebf8218a62875909564adef86a6f4df81503cb617221e793357d62f8e813f7';
-const RPCS = ['https://mainnet.base.org', 'https://base-rpc.publicnode.com', 'https://base.drpc.org'];
+// Archive-capable public endpoints for old-block eth_getLogs (checked
+// 2026-11-15): mainnet.base.org (archive, rate-limits under load) and the
+// Pinax public endpoint (archive, slow). publicnode refuses archive ranges
+// without a token and drpc free caps the range, so both stay in the
+// rotation only as extra chances for the non-log calls.
+const RPCS = [
+  'https://mainnet.base.org',
+  'https://base.rpc.service.pinax.network',
+  'https://base-rpc.publicnode.com',
+  'https://base.drpc.org',
+];
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SYMBOLS = ['NVDAc', 'TSLAc', 'AAPLc', 'MSFTc', 'METAc'];
 
-const args = process.argv.slice(2);
 const only = args.includes('--only') ? args[args.indexOf('--only') + 1].split(',') : SYMBOLS;
 const CHUNK = args.includes('--chunk') ? parseInt(args[args.indexOf('--chunk') + 1], 10) : 10000;
 
@@ -54,7 +66,9 @@ async function rpc(method, params) {
       return data.result;
     } catch (e) {
       lastErr = e;
-      await new Promise((r) => setTimeout(r, 400));
+      // Back off progressively — mainnet.base.org answers bursts with
+      // "request limit reached"; hammering it makes the limit worse.
+      await new Promise((r) => setTimeout(r, 400 * (tries + 1)));
     }
   }
   throw lastErr || new Error('all RPC endpoints failed');
