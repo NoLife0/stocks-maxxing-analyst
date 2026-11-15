@@ -1,0 +1,26 @@
+# secrets — NEVER commit keys or wallets
+.env
+.env.*
+!.env.example
+agent-wallet.json
+*-wallet.json
+*.key
+*.pem
+
+# node
+node_modules/
+dist/
+build/
+out/
+cache/
+artifacts/
+broadcast/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+
+# misc
+.DS_Store
+*.log
