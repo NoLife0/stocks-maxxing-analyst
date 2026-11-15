@@ -1,0 +1,76 @@
+{
+  "stocks": {
+    "nvda": {
+      "address": "0xB2000000000000000000006240055811d9B6D91e",
+      "symbol": "NVDAxT",
+      "name": "Testnet NVDA Share - Demo Only",
+      "decimals": 6,
+      "standard": "B20 Asset (factory precompile)",
+      "createTx": "0x281753be74f7073773075d06f2ca7c78d93f6fa6d6dcea14f1609550518b6cc6",
+      "initialMint": "100000000000"
+    },
+    "tsla": {
+      "address": "0xB200000000000000000000351A6Ed0992c14ce6C",
+      "symbol": "TSLAxT",
+      "name": "Testnet TSLA Share - Demo Only",
+      "decimals": 6,
+      "standard": "B20 Asset (factory precompile)",
+      "createTx": "0x4bcf9eed35f09c706d2bc420e74e48066434cc2f6d714d0e0ba9035cdd9877bc",
+      "initialMint": "100000000000"
+    }
+  },
+  "updatedAt": "2026-11-15T07:22:49.869Z",
+  "network": "base-sepolia",
+  "chainId": 84532,
+  "agent": "0x9a5F56260566Aa697c9Ac45B50fb6B9940519242",
+  "usdc": {
+    "address": "0x97F2fED7B906D5D7C05C5BA4b0D8B4B6B6D4adF4",
+    "symbol": "tUSDC",
+    "name": "Testnet USD Coin",
+    "decimals": 6,
+    "standard": "ERC-20 + EIP-3009 (MockUSDC.sol)"
+  },
+  "policy": {
+    "address": "0x8718b7ff1913545353a9D5aaAc0BB85211E69743",
+    "perSweepCap": "5000000"
+  },
+  "router": {
+    "address": "0x23b5aEdE94cAde47Fb7057d2E888d5D47b105FaF"
+  },
+  "prices": {
+    "nvda": {
+      "mainnetSymbol": "NVDAc",
+      "navPriceUsd": 160.76543559,
+      "navUpdatedAt": "2026-11-13T23:36:23Z",
+      "routerPriceAtomic": "160765436",
+      "setPriceTx": "0x6d601501204ce09bb186430d8412807baa7ae5d4ed67ddd38d681c3de9df1e26"
+    },
+    "tsla": {
+      "mainnetSymbol": "TSLAc",
+      "navPriceUsd": 387.793,
+      "navUpdatedAt": "2026-11-13T21:32:29Z",
+      "routerPriceAtomic": "387793000",
+      "setPriceTx": "0xcb4c29c0c256c5a8b976b0b64d481e4c4983679a4bf661859920ca63aa18ebda"
+    }
+  },
+  "routerInventory": {
+    "nvda": {
+      "amount": "10000000000",
+      "tx": "0x65d2b929bce1d7a57f86fc64e5f6427180d74b7b60e697ca8b78818995a6e8af",
+      "routerBalance": "10000000000"
+    },
+    "tsla": {
+      "amount": "10000000000",
+      "tx": "0x7ebf3453ac6096bd6dfc11d69d295bd14b4e1e1c66ffa76d3b9db92c170a51ac",
+      "routerBalance": "10000000000"
+    }
+  },
+  "deployTxs": {
+    "usdcDeploy": "0x61961dfe3927d6f3b14f96a95b44ce0f1b2a2f71ec876521d47b0ee7fedf1c20",
+    "policyDeploy": "0x718bc489fe43a1d38e53625dfe1d2b775f2f15f617cdb64e7b1512ec9cdfbfcc",
+    "routerDeploy": "0xbca4e730ff48ad58b0dd5c08dced7f67622e2ffe7a43d98b32d797bf10a3e6c9",
+    "policySetRouter": "0x3e457b98354b4fd156d41ece80153cf58298f34372769a8b58158c2598819824",
+    "policySetCap": "0x44353fcdb3698c495ca35bfc67b1c9a9ae2d307add3be8a90c5ada92a8d19da1",
+    "mintAgentFloat": "0xf6205d4ec51bd560f0020b4dc28be6ffc983226536a7d359ef110050fd6b5def"
+  }
+}

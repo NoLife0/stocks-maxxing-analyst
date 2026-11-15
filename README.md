@@ -4,7 +4,7 @@
 
 Built in public for the **Base — Stocks Maxxing Season**, track **Agentic Stock Finance**. Submission deadline: **5 December 2026**.
 
-> Status: **Phase 0 — foundation** (15 Nov 2026). Design doc and phase plan live in the project notes; code lands phase by phase, in the open.
+> Status: **Phase 1 — payment & treasury rails LIVE on Base Sepolia** (15 Nov 2026). The full loop — 402 → EIP-3009 payment → research report → treasury sweep into B20 stock positions — runs end-to-end with real testnet transactions. Contract addresses and tx hashes: `contracts/deployments.sepolia.json`.
 
 ## How it works
 
@@ -19,7 +19,7 @@ Demo execution runs on **Base Sepolia testnet** (expressly allowed by the quest 
 
 | Folder | Contents |
 |---|---|
-| `contracts/` | Base Sepolia contracts: B20-style mock stocks (ERC-8056 multiplier semantics), mock USDC, policy/treasury contract, simple swap router |
+| `contracts/` | Base Sepolia contracts: **real B20 Asset** demo shares (factory precompile, ERC-8056 multiplier), mock USDC with EIP-3009, policy/treasury contract, simple swap router |
 | `server/` | x402 paywall server + research engine (Tokenized Stocks API + Chainlink readers → report generator) |
 | `client-agent/` | Demo buyer agent that purchases research via x402 (also the organic traction loop) |
 | `dashboard/` | Web dashboard: revenue, treasury positions in UI amounts (`balanceOfUI`), transaction log |
