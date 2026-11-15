@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Analyst-for-Hire — Treasury Dashboard</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: ui-sans-system, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: #0b0e14; color: #e6e9ef; }
+  header { padding: 28px 24px 8px; max-width: 1080px; margin: 0 auto; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  h1 .accent { color: #6ea8fe; }
+  .sub { color: #9aa4b2; font-size: 14px; line-height: 1.5; }
+  .sub a { color: #6ea8fe; }
+  main { max-width: 1080px; margin: 0 auto; padding: 16px 24px 40px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; margin: 14px 0 22px; }
+  .card { background: #12161f; border: 1px solid #1f2635; border-radius: 12px; padding: 16px; }
+  .card .label { color: #9aa4b2; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  .card .value { font-size: 26px; font-weight: 650; margin-top: 6px; }
+  .card .note { color: #9aa4b2; font-size: 12px; margin-top: 4px; }
+  h2 { font-size: 17px; margin: 26px 0 10px; }
+  table { width: 100%; border-collapse: collapse; background: #12161f; border: 1px solid #1f2635; border-radius: 12px; overflow: hidden; }
+  th, td { padding: 10px 12px; text-align: left; font-size: 13.5px; border-bottom: 1px solid #1c2230; }
+  th { color: #9aa4b2; font-weight: 600; background: #0e1219; }
+  tr:last-child td { border-bottom: none; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  a { color: #6ea8fe; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+  .tag { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; }
+  .tag.sale { background: #14331f; color: #5fd68b; }
+  .tag.sweep { background: #2b2140; color: #b79cff; }
+  .muted { color: #9aa4b2; }
+  footer { max-width: 1080px; margin: 0 auto; padding: 0 24px 32px; color: #77808e; font-size: 12.5px; line-height: 1.6; }
+  #err { color: #ff8a8a; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Analyst-for-Hire <span class="accent">— Treasury Dashboard</span></h1>
+  <div class="sub">
+    An autonomous research agent sells tokenized-stock research reports over
+    <b>x402</b> (0.25 tUSDC per report, EIP-3009, gasless for the buyer) and sweeps the
+    profit into a basket of tokenized stocks under an owner-signed policy.
+    Everything below is read live from <b>Base Sepolia</b> chain state plus Base mainnet
+    NAV reference data — no server-side bookkeeping.
+  </div>
+  <div class="sub" id="meta">Loading chain state…</div>
+</header>
+<main>
+  <div class="cards" id="cards"></div>
+
+  <h2>Treasury positions (Base Sepolia B20 testnet tokens)</h2>
+  <table id="positions">
+    <thead><tr>
+      <th>Asset</th><th>Contract</th><th class="num">Balance (UI shares)</th>
+      <th class="num">UI multiplier</th><th class="num">Mainnet NAV (ref)</th><th class="num">Ref. value</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>Activity — report sales &amp; treasury sweeps</h2>
+  <table id="activity">
+    <thead><tr>
+      <th>Type</th><th>Time (UTC)</th><th>Detail</th><th class="num">Amount (tUSDC)</th><th>Transaction</th>
+    </tr></thead>
+    <tbody></tbody>
+  </table>
+  <div id="err"></div>
+</main>
+<footer>
+  Demo on Base Sepolia testnet. tUSDC and the *xT stock tokens are testnet instruments with no
+  monetary value; mainnet NAV figures are reference values from the Coinbase Tokenized Stocks API,
+  not execution prices. Research reports are onchain data summaries — not investment advice.
+  <span id="gen"></span>
+</footer>
+<script>
+const short = (a) => a ? a.slice(0, 6) + '…' + a.slice(-4) : '';
+const txLink = (ex, tx) => `<a class="mono" href="${ex}/tx/${tx}" target="_blank" rel="noopener">${short(tx)}</a>`;
+const addrLink = (ex, a) => `<a class="mono" href="${ex}/address/${a}" target="_blank" rel="noopener">${short(a)}</a>`;
+
+async function main() {
+  try {
+    const s = await (await fetch('/api/state')).json();
+    if (s.error) throw new Error(s.error);
+    const ex = s.explorer;
+    document.getElementById('meta').innerHTML =
+      `Policy ${addrLink(ex, s.contracts.policy)} · tUSDC ${addrLink(ex, s.contracts.usdc)} · Router ${addrLink(ex, s.contracts.router)} · Agent ${addrLink(ex, s.contracts.agent)}`;
+    document.getElementById('cards').innerHTML = `
+      <div class="card"><div class="label">Reports sold</div><div class="value">${s.revenue.reports_sold}</div><div class="note">at ${s.revenue.price_per_report_tusdc} tUSDC each, via x402</div></div>
+      <div class="card"><div class="label">Total revenue</div><div class="value">${s.revenue.total_tusdc} tUSDC</div><div class="note">settled onchain into the TreasuryPolicy</div></div>
+      <div class="card"><div class="label">Swept into stocks</div><div class="value">${s.treasury.total_swept_tusdc} tUSDC</div><div class="note">${s.treasury.sweep_count} sweeps · policy keeps a 0.05 tUSDC reserve</div></div>
+      <div class="card"><div class="label">Treasury stock value (ref)</div><div class="value">$${s.treasury.positions_reference_value_usd}</div><div class="note">UI shares × mainnet NAV reference</div></div>`;
+    document.querySelector('#positions tbody').innerHTML = s.treasury.positions.map(p => `
+      <tr>
+        <td><b>${p.symbol}</b></td>
+        <td>${addrLink(ex, p.address)}</td>
+        <td class="num">${p.ui_shares}</td>
+        <td class="num">${p.ui_multiplier}</td>
+        <td class="num">${p.nav_usd !== null ? '$' + p.nav_usd : '—'}</td>
+        <td class="num">${p.reference_value_usd !== null ? '$' + p.reference_value_usd : '—'}</td>
+      </tr>`).join('');
+    document.querySelector('#activity tbody').innerHTML = s.activity.map(a => {
+      if (a.kind === 'sale') return `
+        <tr><td><span class="tag sale">SALE</span></td><td class="muted">${a.time.replace('T', ' ').replace('Z', '')}</td>
+        <td>Report payment from ${addrLink(ex, a.payer)}</td>
+        <td class="num">${a.amount_tusdc}</td><td>${txLink(ex, a.tx)}</td></tr>`;
+      const buys = a.buys.map(b => `${b.asset}: ${b.usdc_in} → ${b.stock_out_ui}`).join(' · ');
+      return `
+        <tr><td><span class="tag sweep">SWEEP #${a.sweep_id}</span></td><td class="muted">${a.time.replace('T', ' ').replace('Z', '')}</td>
+        <td>${buys || '—'}</td>
+        <td class="num">${a.total_tusdc}</td><td>${txLink(ex, a.tx)}</td></tr>`;
+    }).join('');
+    document.getElementById('gen').textContent = `Generated ${s.generated_at}.`;
+  } catch (e) {
+    document.getElementById('err').textContent = 'Failed to load chain state: ' + e.message;
+  }
+}
+main();
+</script>
+</body>
+</html>

@@ -21,15 +21,15 @@
 const http = require('http');
 const { ethers } = require('ethers');
 const { provider, agentWallet, loadDeployments } = require('../contracts/scripts/lib');
-const { buildReport, TICKERS } = require('./research');
+const { buildReport, TICKERS, SEPOLIA_KEY } = require('./research');
 
 const PORT = process.env.PORT || 4021;
 const PRICE = 250000n; // 0.25 tUSDC per report
 const RESERVE = 50000n; // 0.05 tUSDC operating reserve kept in the policy
-const BASKET = [
-  { key: 'nvda', weightBps: 6000 }, // 60% NVDAxT
-  { key: 'tsla', weightBps: 4000 }, // 40% TSLAxT
-];
+// Sweep basket (Phase 2: five flagship tickers). Keys refer to
+// contracts/deployments.sepolia.json; entries missing from deployments are
+// skipped so the server still runs on a Phase-1-only deployment file.
+const BASKET_WEIGHTS = { nvda: 3000, tsla: 2000, aapl: 2000, msft: 1500, meta: 1500 };
 
 const dep = loadDeployments();
 if (!dep.usdc || !dep.policy || !dep.stocks) {
@@ -58,6 +58,14 @@ const STOCK_ABI = [
 
 const usdc = new ethers.Contract(dep.usdc.address, USDC_ABI, wallet);
 const policy = new ethers.Contract(dep.policy.address, POLICY_ABI, wallet);
+
+const BASKET = Object.entries(BASKET_WEIGHTS)
+  .filter(([key]) => dep.stocks && dep.stocks[key])
+  .map(([key, weightBps]) => ({ key, weightBps }));
+if (!BASKET.length) {
+  console.error('no basket stocks in deployments.sepolia.json');
+  process.exit(1);
+}
 
 const EIP712_DOMAIN = {
   name: 'Testnet USD Coin',
@@ -158,6 +166,30 @@ async function treasuryState() {
   };
 }
 
+// The seller treasury's position in one ticker's testnet B20 token, read
+// live from Base Sepolia — included in each report so buyers see the
+// revenue-to-stock loop in the product they just paid for.
+async function treasuryPositionFor(ticker) {
+  const key = SEPOLIA_KEY[ticker];
+  if (!key || !dep.stocks[key]) return null;
+  const stock = new ethers.Contract(dep.stocks[key].address, STOCK_ABI, prov);
+  const [raw, ui, mult] = await Promise.all([
+    stock.balanceOf(dep.policy.address),
+    stock.balanceOfUI(dep.policy.address),
+    stock.uiMultiplier(),
+  ]);
+  return {
+    network: 'base-sepolia',
+    testnet_symbol: dep.stocks[key].symbol,
+    testnet_contract: dep.stocks[key].address,
+    holder: dep.policy.address,
+    balance_raw_atomic: raw.toString(),
+    balance_ui_atomic: ui.toString(),
+    balance_ui_shares: Number(ui) / 1e6,
+    ui_multiplier: (Number(mult) / 1e18).toString(),
+  };
+}
+
 async function runSweep() {
   const balance = await usdc.balanceOf(dep.policy.address);
   const sweepable = balance > RESERVE ? balance - RESERVE : 0n;
@@ -212,7 +244,7 @@ const server = http.createServer(async (req, res) => {
       } catch (e) {
         return sendJson(res, 402, { error: `payment invalid: ${e.message}`, accepts: paymentRequirements(req, ticker).accepts });
       }
-      const report = await buildReport(ticker);
+      const report = await buildReport(ticker, await treasuryPositionFor(ticker));
       sales.push({ ticker, ...settled, at: new Date().toISOString() });
       const responseReceipt = Buffer.from(
         JSON.stringify({ success: true, transaction: settled.txHash, network: 'base-sepolia', payer: settled.payer })

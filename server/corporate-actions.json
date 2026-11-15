@@ -1,0 +1,17 @@
+{
+  "actions": {
+    "NVDAc": {
+      "contract": "0xb20000000000000000000078ee7ce2fE4908108C",
+      "first_mint_date": "2026-08-12T12:40:59Z",
+      "found": [],
+      "scan": {
+        "head_block": 57691835,
+        "scanned_down_to": 52899574,
+        "first_mint_block_est": 49145311,
+        "complete": false
+      },
+      "latest": null
+    }
+  },
+  "synced_at": "2026-11-15T07:49:44.839Z"
+}

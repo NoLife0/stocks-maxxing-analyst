@@ -17,9 +17,36 @@
       "standard": "B20 Asset (factory precompile)",
       "createTx": "0x4bcf9eed35f09c706d2bc420e74e48066434cc2f6d714d0e0ba9035cdd9877bc",
       "initialMint": "100000000000"
+    },
+    "aapl": {
+      "address": "0xb2000000000000000000000Fca5EC87196265070",
+      "symbol": "AAPLxT",
+      "name": "Testnet AAPL Share - Demo Only",
+      "decimals": 6,
+      "standard": "B20 Asset (factory precompile)",
+      "createTx": "0xad403baca621bbf3dc43de431b8cd53894afbd2229b15c3ab24d6435ef14a4b2",
+      "initialMint": "100000000000"
+    },
+    "msft": {
+      "address": "0xB200000000000000000000C94Bf96D3Bc0fb5DC4",
+      "symbol": "MSFTxT",
+      "name": "Testnet MSFT Share - Demo Only",
+      "decimals": 6,
+      "standard": "B20 Asset (factory precompile)",
+      "createTx": "0x79a88767d29b1b2022766aa493f89d485b04ef6ffa2d589b824aff9747deda9d",
+      "initialMint": "100000000000"
+    },
+    "meta": {
+      "address": "0xB200000000000000000000fCaD4Ff6D0EFd21eDe",
+      "symbol": "METAxT",
+      "name": "Testnet META Share - Demo Only",
+      "decimals": 6,
+      "standard": "B20 Asset (factory precompile)",
+      "createTx": "0xdc726edcb0caf1ab5e275bb4aa818bfc5a5b031e9b94f8be041fe5b84aecbafc",
+      "initialMint": "100000000000"
     }
   },
-  "updatedAt": "2026-11-15T07:22:49.869Z",
+  "updatedAt": "2026-11-15T07:31:41.770Z",
   "network": "base-sepolia",
   "chainId": 84532,
   "agent": "0x9a5F56260566Aa697c9Ac45B50fb6B9940519242",
@@ -51,6 +78,27 @@
       "navUpdatedAt": "2026-11-13T21:32:29Z",
       "routerPriceAtomic": "387793000",
       "setPriceTx": "0xcb4c29c0c256c5a8b976b0b64d481e4c4983679a4bf661859920ca63aa18ebda"
+    },
+    "aapl": {
+      "mainnetSymbol": "AAPLc",
+      "navPriceUsd": 355.585,
+      "navUpdatedAt": "2026-11-13T21:05:53Z",
+      "routerPriceAtomic": "355585000",
+      "setPriceTx": "0x67803de06efeb3c11e878d7e82f8f6bc4c77c29c871d1ac4538912ba21c4643b"
+    },
+    "msft": {
+      "mainnetSymbol": "MSFTc",
+      "navPriceUsd": 522.405,
+      "navUpdatedAt": "2026-11-13T21:03:29Z",
+      "routerPriceAtomic": "522405000",
+      "setPriceTx": "0xe0a6aa069a49ade23f57c52e3765bb936ec3c1428e6dd6b7b99ce1ab191d9502"
+    },
+    "meta": {
+      "mainnetSymbol": "METAc",
+      "navPriceUsd": 638.54030616,
+      "navUpdatedAt": "2026-11-13T21:05:04Z",
+      "routerPriceAtomic": "638540306",
+      "setPriceTx": "0x57eab9a21f13da190d695df2b4e7db2bfc96903d80ad9a2508657f1348709357"
     }
   },
   "routerInventory": {
@@ -63,6 +111,21 @@
       "amount": "10000000000",
       "tx": "0x7ebf3453ac6096bd6dfc11d69d295bd14b4e1e1c66ffa76d3b9db92c170a51ac",
       "routerBalance": "10000000000"
+    },
+    "aapl": {
+      "amount": "10000000000",
+      "tx": "0xfe9555fe0baf44b20c3af2afffc5e5353b63156580cbca701b184764ea8f6854",
+      "routerBalance": "10000000000"
+    },
+    "msft": {
+      "amount": "10000000000",
+      "tx": "0x292da18251cf55df5647545c03a9ed4c64536b25e3a70d74a30c93dd25c76de9",
+      "routerBalance": "10000000000"
+    },
+    "meta": {
+      "amount": "10000000000",
+      "tx": "0x56e52e82178f96c46685e0f4101006aa8ce8b3ac329893720200006acd2148a8",
+      "routerBalance": "10000000000"
     }
   },
   "deployTxs": {
@@ -72,5 +135,22 @@
     "policySetRouter": "0x3e457b98354b4fd156d41ece80153cf58298f34372769a8b58158c2598819824",
     "policySetCap": "0x44353fcdb3698c495ca35bfc67b1c9a9ae2d307add3be8a90c5ada92a8d19da1",
     "mintAgentFloat": "0xf6205d4ec51bd560f0020b4dc28be6ffc983226536a7d359ef110050fd6b5def"
+  },
+  "phase2": {
+    "txs": {
+      "create_aapl": "0xad403baca621bbf3dc43de431b8cd53894afbd2229b15c3ab24d6435ef14a4b2",
+      "setPrice_aapl": "0x67803de06efeb3c11e878d7e82f8f6bc4c77c29c871d1ac4538912ba21c4643b",
+      "inventory_aapl": "0xfe9555fe0baf44b20c3af2afffc5e5353b63156580cbca701b184764ea8f6854",
+      "allowlist_aapl": "0x1019ff9f088e1753f72334a5f89f29e350cde316f648aaa20629f0183a092fe2",
+      "create_msft": "0x79a88767d29b1b2022766aa493f89d485b04ef6ffa2d589b824aff9747deda9d",
+      "setPrice_msft": "0xe0a6aa069a49ade23f57c52e3765bb936ec3c1428e6dd6b7b99ce1ab191d9502",
+      "inventory_msft": "0x292da18251cf55df5647545c03a9ed4c64536b25e3a70d74a30c93dd25c76de9",
+      "allowlist_msft": "0x9aff712cc7801e4f1bbd70ac2016088e3919c5b069d40da9f42e8c4aecec2f76",
+      "create_meta": "0xdc726edcb0caf1ab5e275bb4aa818bfc5a5b031e9b94f8be041fe5b84aecbafc",
+      "setPrice_meta": "0x57eab9a21f13da190d695df2b4e7db2bfc96903d80ad9a2508657f1348709357",
+      "inventory_meta": "0x56e52e82178f96c46685e0f4101006aa8ce8b3ac329893720200006acd2148a8",
+      "allowlist_meta": "0x9ccf89b5bc86bc7c569c3002c940f29e2807cafd5a1355b0476c879cc41417ec"
+    },
+    "completedAt": "2026-11-15T07:31:41.754Z"
   }
 }
